@@ -1,0 +1,21 @@
+@using BTCPayServer
+@using BTCPayServer.Data
+@using BTCPayServer.Plugins.LitecoinMweb.Services
+@using Microsoft.AspNetCore.Identity
+@inject LitecoinMwebSyncSummary SyncSummary
+@inject SignInManager<ApplicationUser> SignInManager
+
+@if (SignInManager.IsSignedIn(User) && User.IsInRole(Roles.ServerAdmin) && SyncSummary.Summary != null)
+{
+    var summary = SyncSummary.Summary;
+    var status = summary.DaemonAvailable ? summary.Synced ? "enabled" : "pending" : "disabled";
+    <h5 class="d-flex align-items-center fw-semibold">
+        <span class="me-2 btcpay-status btcpay-status--@status"></span>
+        Litecoin MWEB
+    </h5>
+    <ul>
+        <li>Node available: @summary.DaemonAvailable</li>
+        <li>Last updated: @summary.UpdatedAt</li>
+        <li>Synced: @summary.Synced (@summary.CurrentHeight / @summary.TargetHeight)</li>
+    </ul>
+}

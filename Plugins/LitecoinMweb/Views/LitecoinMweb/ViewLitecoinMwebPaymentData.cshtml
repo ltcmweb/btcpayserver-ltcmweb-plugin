@@ -1,0 +1,67 @@
+@using System.Globalization
+@using BTCPayServer.Plugins.LitecoinMweb.Payments
+@using BTCPayServer.Plugins.LitecoinMweb.Services
+@using BTCPayServer.Plugins.LitecoinMweb.ViewModels
+@using BTCPayServer.Services
+@using BTCPayServer.Services.Invoices
+@inject DisplayFormatter DisplayFormatter
+@model BTCPayServer.Models.InvoicingModels.InvoiceDetailsModel
+@inject TransactionLinkProviders TransactionLinkProviders
+@inject PaymentMethodHandlerDictionary handlers
+
+@{
+    var payments = Model.Payments.Select(payment =>
+    {
+        if (!handlers.TryGetValue(payment.PaymentMethodId, out var h) || h is not LitecoinMwebPaymentMethodHandler handler)
+            return null;
+        var m = new LitecoinMwebPaymentViewModel();
+        var onChainPaymentData = handler.ParsePaymentDetails(payment.Details);
+        m.PaymentMethodId = handler.PaymentMethodId;
+        m.DepositAddress = payment.Destination;
+        m.Amount = payment.Value.ToString(CultureInfo.InvariantCulture);
+
+        var confReq = LitecoinMwebListener.ConfirmationsRequired(onChainPaymentData, payment.InvoiceEntity.SpeedPolicy);
+        var confCount = onChainPaymentData.ConfirmationCount;
+        confCount = Math.Min(confReq, confCount);
+        m.Confirmations = $"{confCount} / {confReq}";
+
+        m.OutputId = onChainPaymentData.OutputId;
+        m.ReceivedTime = payment.ReceivedTime;
+        if (onChainPaymentData.OutputId != null)
+            m.TransactionLink = TransactionLinkProviders.GetTransactionLink(m.PaymentMethodId, onChainPaymentData.OutputId);
+        m.Currency = payment.Currency;
+        return m;
+    }).Where(c => c != null).ToList();
+}
+
+@if (payments.Any())
+{
+    <section>
+        <h5>Litecoin MWEB Payments</h5>
+        <table class="table table-hover">
+            <thead>
+            <tr>
+                <th class="w-75px">Payment Method</th>
+                <th class="w-175px">Destination</th>
+                <th class="text-nowrap">Payment Proof</th>
+                <th class="text-end">Confirmations</th>
+                <th class="w-150px text-end">Paid</th>
+            </tr>
+            </thead>
+            <tbody>
+            @foreach (var payment in payments)
+            {
+                <tr>
+                    <td>@payment.PaymentMethodId</td>
+                    <td><vc:truncate-center text="@payment.DepositAddress" classes="truncate-center-id" /></td>
+                    <td><vc:truncate-center text="@payment.OutputId" link="@payment.TransactionLink" classes="truncate-center-id" /></td>
+                    <td class="text-end">@payment.Confirmations</td>
+                    <td class="payment-value text-end text-nowrap">
+                        <span data-sensitive class="text-success">@DisplayFormatter.Currency(payment.Amount, payment.Currency)</span>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </section>
+}

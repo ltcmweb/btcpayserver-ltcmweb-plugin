@@ -1,0 +1,99 @@
+version: "3"
+
+# Run `docker-compose up dev` for bootstrapping your development environment
+# Doing so will expose NBXplorer, Litecoind RPC and postgres port to the host so that tests can Run,
+# The Visual Studio launch setting `Docker-regtest` is configured to use this environment.
+services:
+
+  # The dev container is not actually used, it is just handy to run `docker-compose up dev` to start all services
+  dev:
+    image: alpine:3.7
+    command: [ "/bin/sh", "-c", "trap : TERM INT; while :; do echo Ready to code and debug like a rockstar!!!; sleep 2073600; done & wait" ]
+    depends_on:
+      - nbxplorer
+      - postgres
+      - mwebd
+
+  nbxplorer:
+    image: nicolasdorier/nbxplorer:2.5.16
+    restart: unless-stopped
+    ports:
+      - "32838:32838"
+    expose:
+      - "32838"
+    environment:
+      NBXPLORER_NETWORK: regtest
+      NBXPLORER_CHAINS: "ltc"
+      NBXPLORER_LTCRPCURL: http://litecoind:43782/
+      NBXPLORER_LTCNODEENDPOINT: litecoind:39388
+      NBXPLORER_LTCRPCUSER: ceiwHEbqWI83
+      NBXPLORER_LTCRPCPASSWORD: DwubwWsoo3
+      NBXPLORER_BIND: 0.0.0.0:32838
+      NBXPLORER_MINGAPSIZE: 5
+      NBXPLORER_MAXGAPSIZE: 10
+      NBXPLORER_VERBOSE: 1
+      NBXPLORER_POSTGRES: User ID=postgres;Include Error Detail=true;Host=postgres;Port=5432;Database=nbxplorer
+      NBXPLORER_EXPOSERPC: 1
+      NBXPLORER_NOAUTH: 1
+    depends_on:
+      - litecoind
+
+  litecoind:
+    restart: unless-stopped
+    image: litecoinproject/litecoin-core
+    command: >
+      -regtest=1
+      -rpcuser=ceiwHEbqWI83
+      -rpcpassword=DwubwWsoo3
+      -rpcport=43782
+      -rpcbind=0.0.0.0:43782
+      -rpcallowip=0.0.0.0/0
+      -port=39388
+      -whitelist=0.0.0.0/0
+      -zmqpubrawblock=tcp://0.0.0.0:28332
+      -zmqpubrawtx=tcp://0.0.0.0:28333
+      -deprecatedrpc=signrawtransaction
+      -fallbackfee=0.0002
+    environment:
+      LITECOIN_DATA: /data
+    ports:
+      - "43782:43782"
+      - "39388:39388"
+    expose:
+      - "43782" # RPC
+      - "39388" # P2P
+      - "28332" # ZMQ
+      - "28333" # ZMQ
+    volumes:
+      - "litecoin_datadir:/data"
+
+  mwebd:
+    image: hectorchu1/mwebd
+    restart: unless-stopped
+    command: -c regtest -p litecoind:39388
+    volumes:
+      - "mwebd_datadir:/data"
+    ports:
+      - "12345:12345"
+
+  postgres:
+    image: postgres:13.13
+    environment:
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "39372:5432"
+    expose:
+      - "5432"
+
+volumes:
+  litecoin_datadir:
+  mwebd_datadir:
+
+networks:
+  default:
+    driver: bridge
+  custom:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.23.0.0/16

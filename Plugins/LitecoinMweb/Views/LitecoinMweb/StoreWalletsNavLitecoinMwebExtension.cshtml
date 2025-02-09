@@ -1,0 +1,21 @@
+@using BTCPayServer.Plugins.LitecoinMweb.Controllers
+@using BTCPayServer.Abstractions.Contracts
+@inject SignInManager<ApplicationUser> SignInManager
+@inject IScopeProvider ScopeProvider
+@inject UILitecoinMwebStoreController UILitecoinMwebStore
+
+@if (SignInManager.IsSignedIn(User) && User.IsInRole(Roles.ServerAdmin))
+{
+    var storeId = ScopeProvider.GetCurrentStoreId();
+    var isActive = !string.IsNullOrEmpty(storeId) && ViewContext.RouteData.Values.TryGetValue("Controller", out var controller) && controller is not null &&
+                    nameof(UILitecoinMwebStoreController).StartsWith(controller.ToString() ?? string.Empty, StringComparison.InvariantCultureIgnoreCase);
+    <li class="nav-item">
+        <a class="nav-link @(isActive? "active" : "")"
+            asp-route-storeId="@storeId"
+            asp-action="GetStoreLitecoinMwebPaymentMethod"
+            asp-controller="UILitecoinMwebStore">
+            <span class="me-2 btcpay-status btcpay-status--enabled"></span>
+            <span>Litecoin MWEB</span>
+        </a>
+    </li>
+}
