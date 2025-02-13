@@ -33,7 +33,7 @@ namespace BTCPayServer.Plugins.LitecoinMweb.Services
         public override async Task StartAsync(CancellationToken cancellation)
         {
             await base.StartAsync(cancellation);
-            var pmi = PaymentTypes.CHAIN.GetPaymentMethodId("LTC-MWEB");
+            var pmi = PaymentTypes.CHAIN.GetPaymentMethodId("LTCMWEB");
             var handler = (LitecoinMwebPaymentMethodHandler)handlers[pmi];
             var invoices = await invoiceRepository.GetMonitoredInvoices(pmi, cancellation);
             invoices.Select(invoice => invoice.GetPaymentPrompt(pmi))
@@ -55,7 +55,7 @@ namespace BTCPayServer.Plugins.LitecoinMweb.Services
                 if (blockEvent.PaymentMethodId == PaymentTypes.CHAIN.GetPaymentMethodId("LTC"))
                 {
                     var info = (NBXplorer.Models.NewBlockEvent)blockEvent.AdditionalInfo;
-                    var pmi = PaymentTypes.CHAIN.GetPaymentMethodId("LTC-MWEB");
+                    var pmi = PaymentTypes.CHAIN.GetPaymentMethodId("LTCMWEB");
                     var invoices = await invoiceRepository.GetMonitoredInvoices(pmi, cancellation);
                     await UpdatePaymentStates(invoices, info.Height);
                 }
@@ -84,7 +84,7 @@ namespace BTCPayServer.Plugins.LitecoinMweb.Services
 
         private async Task UpdatePaymentStates(InvoiceEntity[] invoices, int height)
         {
-            var pmi = PaymentTypes.CHAIN.GetPaymentMethodId("LTC-MWEB");
+            var pmi = PaymentTypes.CHAIN.GetPaymentMethodId("LTCMWEB");
             var handler = (LitecoinMwebPaymentMethodHandler)handlers[pmi];
             var paymentsToUpdate = new List<(PaymentEntity payment, InvoiceEntity invoice)>();
 
@@ -111,7 +111,7 @@ namespace BTCPayServer.Plugins.LitecoinMweb.Services
 
         private async Task OnUtxo(Utxo utxo)
         {
-            var pmi = PaymentTypes.CHAIN.GetPaymentMethodId("LTC-MWEB");
+            var pmi = PaymentTypes.CHAIN.GetPaymentMethodId("LTCMWEB");
             var handler = (LitecoinMwebPaymentMethodHandler)handlers[pmi];
             var paymentsToUpdate = new List<(PaymentEntity payment, InvoiceEntity invoice)>();
 
@@ -144,7 +144,7 @@ namespace BTCPayServer.Plugins.LitecoinMweb.Services
             long confirmations, long blockHeight, InvoiceEntity invoice,
             List<(PaymentEntity payment, InvoiceEntity invoice)> paymentsToUpdate)
         {
-            var pmi = PaymentTypes.CHAIN.GetPaymentMethodId("LTC-MWEB");
+            var pmi = PaymentTypes.CHAIN.GetPaymentMethodId("LTCMWEB");
             var handler = (LitecoinMwebPaymentMethodHandler)handlers[pmi];
             var promptDetails = handler.ParsePaymentPromptDetails(invoice.GetPaymentPrompt(pmi).Details);
             if (blockHeight > 0 && blockHeight < promptDetails.FromHeight) return;
@@ -203,7 +203,7 @@ namespace BTCPayServer.Plugins.LitecoinMweb.Services
         private static IEnumerable<PaymentEntity> GetAllLitecoinMwebPayments(InvoiceEntity invoice)
         {
             return invoice.GetPayments(false).Where(p =>
-                p.PaymentMethodId == PaymentTypes.CHAIN.GetPaymentMethodId("LTC-MWEB"));
+                p.PaymentMethodId == PaymentTypes.CHAIN.GetPaymentMethodId("LTCMWEB"));
         }
     }
 }

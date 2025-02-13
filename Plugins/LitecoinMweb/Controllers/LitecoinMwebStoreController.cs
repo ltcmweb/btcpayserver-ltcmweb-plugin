@@ -16,7 +16,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace BTCPayServer.Plugins.LitecoinMweb.Controllers
 {
-    [Route("stores/{storeId}/LTC-MWEB")]
+    [Route("stores/{storeId}/LTCMWEB")]
     [Authorize(AuthenticationSchemes = AuthenticationSchemes.Cookie)]
     [Authorize(Policy = Policies.CanModifyStoreSettings, AuthenticationSchemes = AuthenticationSchemes.Cookie)]
     [Authorize(Policy = Policies.CanModifyServerSettings, AuthenticationSchemes = AuthenticationSchemes.Cookie)]
@@ -29,7 +29,7 @@ namespace BTCPayServer.Plugins.LitecoinMweb.Controllers
 
         private LitecoinMwebPaymentMethodViewModel GetLitecoinMwebPaymentMethodViewModel(StoreData storeData)
         {
-            var pmi = PaymentTypes.CHAIN.GetPaymentMethodId("LTC-MWEB");
+            var pmi = PaymentTypes.CHAIN.GetPaymentMethodId("LTCMWEB");
             var vm = new LitecoinMwebPaymentMethodViewModel
             {
                 Summary = syncSummary.Summary,
@@ -80,7 +80,7 @@ namespace BTCPayServer.Plugins.LitecoinMweb.Controllers
 
             var storeData = StoreData;
             var blob = storeData.GetStoreBlob();
-            var pmi = PaymentTypes.CHAIN.GetPaymentMethodId("LTC-MWEB");
+            var pmi = PaymentTypes.CHAIN.GetPaymentMethodId("LTCMWEB");
             storeData.SetPaymentMethodConfig(handlers[pmi], new LitecoinMwebPaymentPromptDetails
             {
                 ViewKeys = viewModel.ViewKeys,
