@@ -43,7 +43,7 @@ public class LitecoinMwebPlugin : BaseBTCPayServerPlugin
         var blockExplorerLink = chainName == ChainName.Mainnet
                     ? "https://live.blockcypher.com/ltc/tx/{0}/"
                     : "http://explorer.litecointools.com/tx/{0}";
-        var pmi = PaymentTypes.CHAIN.GetPaymentMethodId(network.CryptoCode);
+        var pmi = new PaymentMethodId(network.CryptoCode);
         services.AddDefaultPrettyName(pmi, network.DisplayName);
         services.AddBTCPayNetwork(network).AddTransactionLinkProvider(pmi, new SimpleTransactionLinkProvider(blockExplorerLink));
 

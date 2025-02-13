@@ -24,7 +24,7 @@ namespace BTCPayServer.Plugins.LitecoinMweb.Payments
         public LitecoinMwebSpecificBtcPayNetwork Network => network;
         public JsonSerializer Serializer { get; } = BlobSerializer.CreateSerializer().Serializer;
 
-        public PaymentMethodId PaymentMethodId { get; } = PaymentTypes.CHAIN.GetPaymentMethodId(network.CryptoCode);
+        public PaymentMethodId PaymentMethodId { get; } = new PaymentMethodId(network.CryptoCode);
 
         public Task BeforeFetchingRates(PaymentMethodContext context)
         {
