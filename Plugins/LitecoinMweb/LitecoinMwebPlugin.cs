@@ -33,7 +33,7 @@ public class LitecoinMwebPlugin : BaseBTCPayServerPlugin
 
         var network = new LitecoinMwebSpecificBtcPayNetwork
         {
-            CryptoCode = "LTCMWEB",
+            CryptoCode = "LTC-MWEB",
             DisplayName = "Litecoin MWEB",
             Divisibility = 8,
             DefaultRateRules = [ "LTC_X = LTC_BTC * BTC_X", "LTC_BTC = coingecko(LTC_BTC)" ],

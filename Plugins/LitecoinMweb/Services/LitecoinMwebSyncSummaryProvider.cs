@@ -20,7 +20,7 @@ namespace BTCPayServer.Plugins.LitecoinMweb.Services
             return [new LitecoinMwebSyncStatus
             {
                 Summary = syncSummary.Summary,
-                PaymentMethodId = PaymentTypes.CHAIN.GetPaymentMethodId("LTCMWEB").ToString()
+                PaymentMethodId = "LTC-MWEB"
             }];
         }
     }
