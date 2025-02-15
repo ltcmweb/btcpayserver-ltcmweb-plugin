@@ -63,8 +63,6 @@ namespace BTCPayServer.Plugins.LitecoinMweb.Payments
                 {
                     prepare.ReserveAddress = ReserveAddress(prepare.ScanKey, prepare.SpendPubKey);
                 }
-
-                scanner.StartScan(prepare.ScanKey);
             }
 
             return Task.CompletedTask;
@@ -88,6 +86,8 @@ namespace BTCPayServer.Plugins.LitecoinMweb.Payments
 
             context.Prompt.Destination = details.Address;
             context.Prompt.Details = JObject.FromObject(details, Serializer);
+
+            scanner.StartScan(prepare.ScanKey, result.FromHeight);
         }
 
         private readonly Dictionary<(string, string), HashSet<uint>> reservedAddressIndices = [];

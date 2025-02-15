@@ -7,7 +7,7 @@
   <PropertyGroup>
     <Product>BTCPay Server: Litecoin MWEB support plugin</Product>
     <Description>This plugin extends BTCPay Server to enable users to receive payments via Litecoin MWEB.</Description>
-    <Version>1.0.3</Version>
+    <Version>1.0.4</Version>
   </PropertyGroup>
 
   <!-- Plugin development properties -->

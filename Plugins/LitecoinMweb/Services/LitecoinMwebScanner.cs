@@ -37,20 +37,24 @@ namespace BTCPayServer.Plugins.LitecoinMweb.Services
             _scanners.Clear();
         }
 
-        public void StartScan(string scanKey)
+        public void StartScan(string scanKey, int height)
         {
             var key = ByteString.CopyFrom(Convert.FromHexString(scanKey));
             if (_scanners.ContainsKey(key)) return;
-            _scanners[key] = StartScan(key, _cts.Token);
+            _scanners[key] = StartScan(key, height, _cts.Token);
         }
 
-        private async Task StartScan(ByteString scanKey, CancellationToken cancellation)
+        private async Task StartScan(ByteString scanKey, int height, CancellationToken cancellation)
         {
             try
             {
                 using var channel = GrpcChannel.ForAddress(configuration.DaemonRpcUri);
                 var client = new Rpc.RpcClient(channel);
-                using var call = client.Utxos(new UtxosRequest { ScanSecret = scanKey }, cancellationToken: cancellation);
+                using var call = client.Utxos(new UtxosRequest
+                {
+                    FromHeight = height,
+                    ScanSecret = scanKey
+                }, cancellationToken: cancellation);
                 await foreach (var utxo in call.ResponseStream.ReadAllAsync(cancellation))
                 {
                     if (utxo.OutputId == "") continue;

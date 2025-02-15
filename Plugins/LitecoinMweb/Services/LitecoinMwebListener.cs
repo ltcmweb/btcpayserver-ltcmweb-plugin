@@ -37,8 +37,10 @@ namespace BTCPayServer.Plugins.LitecoinMweb.Services
             var handler = (LitecoinMwebPaymentMethodHandler)handlers[pmi];
             var invoices = await invoiceRepository.GetMonitoredInvoices(pmi, cancellation);
             invoices.Select(invoice => invoice.GetPaymentPrompt(pmi))
-                .Select(prompt => handler.ParsePaymentPromptDetails(prompt.Details).ScanKey)
-                .ToList().ForEach(scanner.StartScan);
+                .Select(prompt => handler.ParsePaymentPromptDetails(prompt.Details))
+                .GroupBy(details => details.ScanKey)
+                .Select(group => (group.Key, Height: group.Min(details => details.FromHeight)))
+                .ToList().ForEach(tuple => scanner.StartScan(tuple.Key, tuple.Height));
         }
 
         protected override void SubscribeToEvents()
