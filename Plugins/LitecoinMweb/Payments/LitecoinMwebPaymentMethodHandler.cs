@@ -133,7 +133,7 @@ namespace BTCPayServer.Plugins.LitecoinMweb.Payments
 
         public Task AfterSavingInvoice(PaymentMethodContext context)
         {
-            lock (reservedAddressIndices)
+            if (context.Prompt.Details != null) lock (reservedAddressIndices)
             {
                 var details = ParsePaymentPromptDetails(context.Prompt.Details);
                 var indicesInUse = reservedAddressIndices.GetValueOrDefault((details.ScanKey, details.SpendPubKey));
