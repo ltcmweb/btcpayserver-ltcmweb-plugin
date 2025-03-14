@@ -34,7 +34,7 @@ namespace BTCPayServer.Plugins.LitecoinMweb.Payments
             return Task.CompletedTask;
         }
 
-        public async Task ConfigurePrompt(PaymentMethodContext context)
+        private async Task<LitecoinMwebOnChainPaymentMethodDetails> DoConfigurePrompt(PaymentMethodContext context)
         {
             var config = ParsePaymentMethodConfig(context.PaymentMethodConfig);
             var keys = config.ViewKeys
@@ -43,7 +43,7 @@ namespace BTCPayServer.Plugins.LitecoinMweb.Payments
                 .Select(Convert.ToHexString).ToArray();
             var result = await ReserveAddress(keys[0], keys[1]);
 
-            var details = new LitecoinMwebOnChainPaymentMethodDetails
+            return new LitecoinMwebOnChainPaymentMethodDetails
             {
                 FromHeight = result.FromHeight,
                 Address = result.Address,
@@ -52,6 +52,19 @@ namespace BTCPayServer.Plugins.LitecoinMweb.Payments
                 AddressIndex = result.AddressIndex,
                 InvoiceSettledConfirmationThreshold = config.InvoiceSettledConfirmationThreshold
             };
+        }
+
+        public async Task ConfigurePrompt(PaymentMethodContext context)
+        {
+            LitecoinMwebOnChainPaymentMethodDetails details;
+            if (context.InvoiceEntity.GetPaymentPrompt(PaymentMethodId)?.Details is { } details_)
+            {
+                details = ParsePaymentPromptDetails(details_);
+            }
+            else
+            {
+                details = await DoConfigurePrompt(context);
+            }
 
             context.Prompt.Destination = details.Address;
             context.Prompt.Details = JObject.FromObject(details, Serializer);
