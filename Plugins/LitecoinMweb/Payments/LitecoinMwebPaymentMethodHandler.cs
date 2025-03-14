@@ -31,55 +31,24 @@ namespace BTCPayServer.Plugins.LitecoinMweb.Payments
             context.Prompt.Currency = "LTC";
             context.Prompt.Divisibility = network.Divisibility;
 
-            if (context.Prompt.Activated)
-            {
-                var config = ParsePaymentMethodConfig(context.PaymentMethodConfig);
-                var keys = config.ViewKeys
-                    .Split(new[] { ' ', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries)
-                    .Select(Convert.FromHexString)
-                    .Select(Convert.ToHexString).ToArray();
-
-                var prepare = new Prepare
-                {
-                    ScanKey = keys[0],
-                    SpendPubKey = keys[1],
-                };
-                context.State = prepare;
-
-                if (context.InvoiceEntity.GetPaymentPrompt(PaymentMethodId) is { } prompt)
-                {
-                    var details = ParsePaymentPromptDetails(prompt.Details);
-                    if (details.ScanKey == prepare.ScanKey && details.SpendPubKey == prepare.SpendPubKey)
-                    {
-                        prepare.ReserveAddress = Task.FromResult(new ReserveAddressResult
-                        {
-                            FromHeight = details.FromHeight,
-                            Address = details.Address,
-                            AddressIndex = details.AddressIndex,
-                        });
-                    }
-                }
-                else
-                {
-                    prepare.ReserveAddress = ReserveAddress(prepare.ScanKey, prepare.SpendPubKey);
-                }
-            }
-
             return Task.CompletedTask;
         }
 
         public async Task ConfigurePrompt(PaymentMethodContext context)
         {
             var config = ParsePaymentMethodConfig(context.PaymentMethodConfig);
-            var prepare = (Prepare)context.State;
-            var result = await prepare.ReserveAddress;
+            var keys = config.ViewKeys
+                .Split(new[] { ' ', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(Convert.FromHexString)
+                .Select(Convert.ToHexString).ToArray();
+            var result = await ReserveAddress(keys[0], keys[1]);
 
             var details = new LitecoinMwebOnChainPaymentMethodDetails
             {
                 FromHeight = result.FromHeight,
                 Address = result.Address,
-                ScanKey = prepare.ScanKey,
-                SpendPubKey = prepare.SpendPubKey,
+                ScanKey = keys[0],
+                SpendPubKey = keys[1],
                 AddressIndex = result.AddressIndex,
                 InvoiceSettledConfirmationThreshold = config.InvoiceSettledConfirmationThreshold
             };
@@ -87,7 +56,7 @@ namespace BTCPayServer.Plugins.LitecoinMweb.Payments
             context.Prompt.Destination = details.Address;
             context.Prompt.Details = JObject.FromObject(details, Serializer);
 
-            scanner.StartScan(prepare.ScanKey, result.FromHeight);
+            scanner.StartScan(details.ScanKey, details.FromHeight);
         }
 
         private readonly Dictionary<(string, string), HashSet<uint>> reservedAddressIndices = [];
@@ -150,13 +119,6 @@ namespace BTCPayServer.Plugins.LitecoinMweb.Payments
         object IPaymentMethodHandler.ParsePaymentMethodConfig(JToken config)
         {
             return ParsePaymentMethodConfig(config);
-        }
-
-        class Prepare
-        {
-            public string ScanKey { get; internal set; }
-            public string SpendPubKey { get; internal set; }
-            public Task<ReserveAddressResult> ReserveAddress { get; internal set; }
         }
 
         class ReserveAddressResult
