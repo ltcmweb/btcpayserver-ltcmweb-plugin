@@ -19,7 +19,6 @@ namespace BTCPayServer.Plugins.LitecoinMweb.Controllers
     [Route("stores/{storeId}/LTC-MWEB")]
     [Authorize(AuthenticationSchemes = AuthenticationSchemes.Cookie)]
     [Authorize(Policy = Policies.CanModifyStoreSettings, AuthenticationSchemes = AuthenticationSchemes.Cookie)]
-    [Authorize(Policy = Policies.CanModifyServerSettings, AuthenticationSchemes = AuthenticationSchemes.Cookie)]
     public class UILitecoinMwebStoreController(
         StoreRepository storeRepository,
         LitecoinMwebSyncSummary syncSummary,
