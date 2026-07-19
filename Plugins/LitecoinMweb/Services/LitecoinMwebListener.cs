@@ -33,14 +33,25 @@ namespace BTCPayServer.Plugins.LitecoinMweb.Services
         public override async Task StartAsync(CancellationToken cancellation)
         {
             await base.StartAsync(cancellation);
-            var pmi = new PaymentMethodId("LTC-MWEB");
-            var handler = (LitecoinMwebPaymentMethodHandler)handlers[pmi];
-            var invoices = await invoiceRepository.GetMonitoredInvoices(pmi, cancellation);
-            invoices.Select(invoice => invoice.GetPaymentPrompt(pmi))
-                .Select(prompt => handler.ParsePaymentPromptDetails(prompt.Details))
-                .GroupBy(details => details.ScanKey)
-                .Select(group => (group.Key, Height: group.Min(details => details.FromHeight)))
-                .ToList().ForEach(tuple => scanner.StartScan(tuple.Key, tuple.Height));
+            // Resuming scans must never throw out of StartAsync: if it does, BTCPay's
+            // host fails to start and the plugin gets written to the "disabled"
+            // kill-list. Scans that can't start now are retried by the scanner and
+            // re-driven by NewBlockEvent, so a transient failure here is recoverable.
+            try
+            {
+                var pmi = new PaymentMethodId("LTC-MWEB");
+                var handler = (LitecoinMwebPaymentMethodHandler)handlers[pmi];
+                var invoices = await invoiceRepository.GetMonitoredInvoices(pmi, cancellation);
+                invoices.Select(invoice => invoice.GetPaymentPrompt(pmi))
+                    .Select(prompt => handler.ParsePaymentPromptDetails(prompt.Details))
+                    .GroupBy(details => details.ScanKey)
+                    .Select(group => (group.Key, Height: group.Min(details => details.FromHeight)))
+                    .ToList().ForEach(tuple => scanner.StartScan(tuple.Key, tuple.Height));
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to resume Litecoin MWEB invoice scanning on startup; will resume on the next block event");
+            }
         }
 
         protected override void SubscribeToEvents()

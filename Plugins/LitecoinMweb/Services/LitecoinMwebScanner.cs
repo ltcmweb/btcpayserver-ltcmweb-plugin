@@ -4,6 +4,7 @@ using Grpc.Core;
 using Grpc.Net.Client;
 using GrpcMwebdClient;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Concurrent;
 using System.Threading;
@@ -13,7 +14,8 @@ namespace BTCPayServer.Plugins.LitecoinMweb.Services
 {
     public class LitecoinMwebScanner(
         EventAggregator eventAggregator,
-        LitecoinMwebConfiguration configuration) : IHostedService
+        LitecoinMwebConfiguration configuration,
+        ILogger<LitecoinMwebScanner> logger) : IHostedService
     {
         private readonly CancellationTokenSource _cts = new();
         private readonly ConcurrentDictionary<ByteString, Task> _scanners = [];
@@ -32,7 +34,9 @@ namespace BTCPayServer.Plugins.LitecoinMweb.Services
                 {
                     await task.WaitAsync(cancellation);
                 }
-                catch (OperationCanceledException) { }
+                // A scan task may have faulted (e.g. mwebd was unavailable). Never let
+                // shutdown throw over it, or BTCPay can flag the plugin as crashing.
+                catch (Exception) { }
             }
             _scanners.Clear();
         }
@@ -46,24 +50,49 @@ namespace BTCPayServer.Plugins.LitecoinMweb.Services
 
         private async Task StartScan(ByteString scanKey, int height, CancellationToken cancellation)
         {
-            try
+            // Keep scanning across transient mwebd outages. If the daemon is cold
+            // (e.g. right after a full-stack restart) the gRPC call throws
+            // RpcException(Unavailable); wait and retry rather than letting the task
+            // fault permanently, which would silently stop detecting payments.
+            while (!cancellation.IsCancellationRequested)
             {
-                using var channel = GrpcChannel.ForAddress(configuration.DaemonRpcUri);
-                var client = new Rpc.RpcClient(channel);
-                using var call = client.Utxos(new UtxosRequest
+                try
                 {
-                    FromHeight = height,
-                    ScanSecret = scanKey
-                }, cancellationToken: cancellation);
-                await foreach (var utxo in call.ResponseStream.ReadAllAsync(cancellation))
-                {
-                    if (utxo.OutputId == "") continue;
-                    eventAggregator.Publish(utxo);
+                    using var channel = GrpcChannel.ForAddress(configuration.DaemonRpcUri);
+                    var client = new Rpc.RpcClient(channel);
+                    using var call = client.Utxos(new UtxosRequest
+                    {
+                        FromHeight = height,
+                        ScanSecret = scanKey
+                    }, cancellationToken: cancellation);
+                    await foreach (var utxo in call.ResponseStream.ReadAllAsync(cancellation))
+                    {
+                        if (utxo.OutputId == "") continue;
+                        eventAggregator.Publish(utxo);
+                    }
+                    // Stream completed without error; nothing left to scan.
+                    return;
                 }
-            }
-            catch (RpcException ex) when (ex.InnerException is OperationCanceledException)
-            {
-                throw ex.InnerException;
+                catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+                {
+                    return;
+                }
+                catch (RpcException ex) when (ex.InnerException is OperationCanceledException)
+                {
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, "MWEB scan for a key failed (mwebd unavailable?); retrying in 5s");
+                    try
+                    {
+                        await Task.Delay(TimeSpan.FromSeconds(5), cancellation);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        return;
+                    }
+                }
             }
         }
     }

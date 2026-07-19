@@ -41,7 +41,9 @@ namespace BTCPayServer.Plugins.LitecoinMweb.Services
             {
                 await _task.WaitAsync(cancellation);
             }
-            catch (OperationCanceledException) { }
+            // Never let shutdown throw over the summary loop, or BTCPay can treat the
+            // plugin as crashing and disable it.
+            catch (Exception) { }
         }
 
         private async Task StartLoop(CancellationToken cancellation)
