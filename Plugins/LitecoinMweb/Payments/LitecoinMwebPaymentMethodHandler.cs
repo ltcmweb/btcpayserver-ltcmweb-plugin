@@ -83,7 +83,7 @@ namespace BTCPayServer.Plugins.LitecoinMweb.Payments
                 {
                     StoreId = [context.InvoiceEntity.StoreId],
                     StartDate = monitoringStart
-                }, default)).Where(invoice => invoice.MonitoringExpiration > DateTimeOffset.UtcNow &&
+                })).Where(invoice => invoice.MonitoringExpiration > DateTimeOffset.UtcNow &&
                     invoice.GetPaymentPrompt(PaymentMethodId)?.Details != null));
             var addressIndicesInUse = invoices
                 .Select(invoice => invoice.GetPaymentPrompt(PaymentMethodId))
