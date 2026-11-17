@@ -127,6 +127,9 @@ namespace BTCPayServer.Plugins.LitecoinMweb.Services
                 .Select(invoice => invoice.GetPaymentPrompt(pmi))
                 .Where(prompt => handler.ParsePaymentPromptDetails(prompt.Details).Address == utxo.Address)
                 .Select(prompt => prompt.ParentEntity).FirstOrDefault();
+            // Else an expired invoice still being monitored for late payments
+            invoice ??= (await invoiceRepository.GetInvoices(new InvoiceQuery { TextSearch = utxo.Address, Take = 1 }, default))
+                .FirstOrDefault(i => i.MonitoringExpiration > DateTimeOffset.UtcNow);
             if (invoice != null)
             {
                 var amt = utxo.Value.ToString(CultureInfo.InvariantCulture).PadLeft(8, '0');
