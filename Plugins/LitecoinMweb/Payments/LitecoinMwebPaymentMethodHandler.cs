@@ -41,7 +41,7 @@ namespace BTCPayServer.Plugins.LitecoinMweb.Payments
                 .Split(new[] { ' ', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries)
                 .Select(Convert.FromHexString)
                 .Select(Convert.ToHexString).ToArray();
-            var result = await ReserveAddress(keys[0], keys[1]);
+            var result = await ReserveAddress(context, keys[0], keys[1]);
 
             return new LitecoinMwebOnChainPaymentMethodDetails
             {
@@ -74,9 +74,17 @@ namespace BTCPayServer.Plugins.LitecoinMweb.Payments
 
         private readonly Dictionary<(string, string), HashSet<uint>> reservedAddressIndices = [];
 
-        private async Task<ReserveAddressResult> ReserveAddress(string scanKey, string spendPubKey)
+        private async Task<ReserveAddressResult> ReserveAddress(PaymentMethodContext context, string scanKey, string spendPubKey)
         {
-            var invoices = await invoiceRepository.GetMonitoredInvoices(PaymentMethodId);
+            // Expired invoices keep their address until their monitoring expires, so late payments can't land on a new invoice
+            var monitoringStart = DateTimeOffset.UtcNow - context.StoreBlob.InvoiceExpiration - context.StoreBlob.MonitoringExpiration;
+            var invoices = (await invoiceRepository.GetMonitoredInvoices(PaymentMethodId))
+                .Concat((await invoiceRepository.GetInvoices(new InvoiceQuery
+                {
+                    StoreId = [context.InvoiceEntity.StoreId],
+                    StartDate = monitoringStart
+                })).Where(invoice => invoice.MonitoringExpiration > DateTimeOffset.UtcNow &&
+                    invoice.GetPaymentPrompt(PaymentMethodId)?.Details != null));
             var addressIndicesInUse = invoices
                 .Select(invoice => invoice.GetPaymentPrompt(PaymentMethodId))
                 .Select(prompt => ParsePaymentPromptDetails(prompt.Details))
